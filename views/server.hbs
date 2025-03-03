@@ -137,34 +137,38 @@
                     {{/if}}
                     {{/if}}
                     {{#if (eq activeSection '2')}}
-                    <p class="top-search">Статус сетей</p>
-                    <div class="st_conn_div">
-                        <p>Сеть</p>
-                        <p>Состояние сети</p>
-                        <p>Сигнал</p>
-                    </div>
-                    <div class="st_con_div">
-                        <div class="st_con_div_min">
-                            <p>kolomna</p>
-                            <p>normally</p>
-                            <p>-73 db</p>
+                        <p class="top-search">Статус сетей</p>
+                        <div class="st_conn_div">
+                            <p>Сеть</p>
+                            <p>Действие</p>
+                            <p>Сигнал</p>
                         </div>
-                        <div class="st_con_div_min">
-                            <p>voskresensk</p>
-                            <p>good</p>
-                            <p>-53 db</p>
+                        <div class="st_con_div">
+                            {{#each networks}}
+                                <div class="st_con_div_min">
+                                    <p>{{this}}</p>
+                                    <button class="ping-btn" data-network="{{this}}">Пинговать</button>
+                                    <p id="signal-{{this}}">-</p>
+                                </div>
+                            {{/each}}
                         </div>
-                        <div class="st_con_div_min">
-                            <p>luhovitsi</p>
-                            <p>bad</p>
-                            <p>-95 db</p>
-                        </div>
-                        <div class="st_con_div_min">
-                            <p>kolomna1</p>
-                            <p>normally</p>
-                            <p>-75 db</p>
-                        </div>
-                    </div>
+
+                        <script>
+                            // Обработчик клика на кнопку пинга с async/await
+                            document.querySelectorAll('.ping-btn').forEach(button => {
+                                button.addEventListener('click', async function () {  // Добавлен async
+                                    const network = this.getAttribute('data-network');
+                                    const signalElement = document.getElementById('signal-' + network);
+                                    
+                                    // Отправляем запрос на сервер для пинга
+                                    const response = await fetch(`/ping/${network}`);
+                                    const data = await response.json();
+                                    
+                                    // Обновляем результат в столбце "Сигнал"
+                                    signalElement.textContent = data.signal;
+                                });
+                            });
+                        </script>
                     {{/if}}
                 </div>
             </section>

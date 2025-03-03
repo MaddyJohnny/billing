@@ -3,6 +3,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
 const hbs = require("hbs");
+const ping = require("ping");
 
 const app = express();
 
@@ -36,6 +37,16 @@ const pool = mysql.createPool({
 });
 
 app.set("view engine", "hbs");
+
+async function checkNetworkStatus(host) {
+  try {
+    const res = await ping.promise.probe(host);
+    return res.alive ? `${res.time} ms` : 'Не доступен';  // Return a string value
+  } catch (err) {
+    console.error('Ошибка пинга:', err);
+    return 'Ошибка пинга';  // Return a string in case of error
+  }
+}
 
 app.get("/", function (req, res) {
   res.render("auth");
@@ -449,7 +460,7 @@ function requireManager(req, res, next) {
   next();
 }
 
-app.get("/server", (req, res) => {
+app.get("/server", async (req, res) => {
   const user = req.session.user;
   const login = user ? user.login : "unknown";
   const activeSection = req.query.section || "1";
@@ -471,15 +482,63 @@ app.get("/server", (req, res) => {
         isManager,
       });
     });
-  } else {
+  } else if (activeSection === "2") {
+    const networkMapping = {
+      kolomna: 'yandex.ru',
+      voskresensk: 'google.com',
+      luhovitsi: 'belarus.by',
+      kolomna1: 'bing.com'
+    };
+
+    const networks = Object.keys(networkMapping);
+    // Асинхронный запрос для пинга всех сетей
+    const statuses = await Promise.all(networks.map(network => checkNetworkStatus(networkMapping[network])));
+
     res.render("server", {
       username: login,
       activeSection,
-      tariffPlans: [],
       isManager,
+      networks,
+      statuses
+    });
+  } else {
+    // Если активная секция не "1" или "2", рендерим пустую страницу
+    res.render("server", {
+      username: login,
+      activeSection,
+      isManager,
+      networks: [],
+      statuses: []
     });
   }
 });
+
+app.get("/ping/:network", async (req, res) => {
+  const { network } = req.params;
+
+  const networkMapping = {
+    kolomna: 'yandex.ru',
+    voskresensk: 'google.com',
+    luhovitsi: 'belarus.by',
+    kolomna1: 'bing.com'
+  };
+
+  const target = networkMapping[network];
+
+  if (!target) {
+    return res.status(404).json({ signal: 'Network not found' });  // Return a string here
+  }
+
+  try {
+    // Get the signal value
+    const status = await checkNetworkStatus(target);
+    return res.json({ signal: status });  // Send the string result
+  } catch (err) {
+    console.error(`Ошибка пинга для ${network}:`, err);
+    return res.status(500).json({ signal: 'Ошибка пинга' });  // Return a string in case of error
+  }
+});
+
 
 app.post("/create-tariff", requireManager, (req, res) => {
   const { name, limit_gb, speed, price } = req.body;
