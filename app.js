@@ -305,6 +305,7 @@ app.post("/new", (req, res) => {
 app.post("/save", (req, res) => {
   const user = req.session.user;
   const login = user ? user.login : "unknown";
+  const status = user ? user.status : null; // сохраняем статус
   const {
     contract_number,
     full_name,
@@ -374,7 +375,12 @@ app.post("/save", (req, res) => {
         return res.status(500).send("Ошибка сохранения данных.");
       }
 
-      req.session.user = { login: login };
+      // Сохраняем полные данные пользователя
+      req.session.user = { 
+        login: login,
+        status: status,
+        id: user.id
+      };
 
       const section = req.body.section || "1";
       res.redirect(`/new?section=${section}&contract_number=${encodeURIComponent(contract_number)}`);
